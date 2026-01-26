@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.pyc
+
+# Environment
+.env
+
+# Machine Learning models
+*.h5
+*.pkl
+
+# Dataset
+dataset/
+
+# Node.js
+node_modules/
+
+# VS Code
+.vscode/
