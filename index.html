@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IoT Urine Analyzer - ML Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .card-glass {
+            background: rgba(255, 255, 255, 0.95);
+            /*backdrop-filter: blur(10px);*/
+        }
+        
+        .tab-button {
+            transition: all 0.3s ease;
+        }
+        
+        .tab-button.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.375rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        
+        .badge-jernih { background: #d1fae5; color: #065f46; }
+        .badge-agak-keruh { background: #fef3c7; color: #92400e; }
+        .badge-keruh { background: #fee2e2; color: #991b1b; }
+        
+        .risk-normal { background: #d1fae5; color: #065f46; }
+        .risk-rendah { background: #dbeafe; color: #1e40af; }
+        .risk-sedang { background: #fef3c7; color: #92400e; }
+        .risk-tinggi { background: #fee2e2; color: #991b1b; }
+        
+        .pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-8">
+
+    <div class="max-w-7xl mx-auto space-y-6">
+        <!-- Header -->
+        <header class="card-glass p-6 rounded-2xl shadow-xl">
+            <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+                <div>
+                    <h1 class="text-3xl md:text-4xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+                        IoT Urine Analyzer ML
+                    </h1>
+                    <p class="text-gray-600 mt-1">Real-time monitoring with AI prediction</p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <div class="pulse w-3 h-3 bg-green-500 rounded-full"></div>
+                    <span class="text-sm font-semibold text-gray-700">Live • ML Active</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Stats -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="card-glass p-6 rounded-2xl shadow-lg">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm font-medium">Total Data</p>
+                        <h3 class="text-3xl font-bold text-gray-800 mt-1" id="totalData">0</h3>
+                    </div>
+                    <div class="p-3 bg-blue-100 rounded-xl">
+                        <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card-glass p-6 rounded-2xl shadow-lg">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm font-medium">ML Processed</p>
+                        <h3 class="text-3xl font-bold text-gray-800 mt-1" id="mlProcessed">0</h3>
+                        <p class="text-xs text-green-600 mt-1" id="mlCoverage">0%</p>
+                    </div>
+                    <div class="p-3 bg-purple-100 rounded-xl">
+                        <svg class="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card-glass p-6 rounded-2xl shadow-lg">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm font-medium">Avg Confidence</p>
+                        <h3 class="text-3xl font-bold text-gray-800 mt-1" id="avgConfidence">-</h3>
+                        <p class="text-xs text-gray-500 mt-1">ML Accuracy</p>
+                    </div>
+                    <div class="p-3 bg-green-100 rounded-xl">
+                        <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card-glass p-6 rounded-2xl shadow-lg">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm font-medium">Avg NTU</p>
+                        <h3 class="text-3xl font-bold text-gray-800 mt-1" id="avgNTU">-</h3>
+                        <p class="text-xs text-gray-500 mt-1">Turbidity</p>
+                    </div>
+                    <div class="p-3 bg-yellow-100 rounded-xl">
+                        <svg class="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="card-glass p-2 rounded-2xl shadow-xl">
+            <div class="flex gap-2">
+                <button onclick="switchTab('realtime')" id="tab-realtime" class="tab-button active flex-1 px-4 py-3 rounded-xl font-semibold">
+                    Real-time Monitor
+                </button>
+                <button onclick="switchTab('history')" id="tab-history" class="tab-button flex-1 px-4 py-3 rounded-xl font-semibold text-gray-600">
+                    ML History
+                </button>
+            </div>
+        </div>
+
+        <!-- Real-time Tab -->
+        <div id="content-realtime" class="space-y-6">
+            <!-- Latest Data Card -->
+            <div class="card-glass p-6 rounded-2xl shadow-xl">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                    <span class="w-2 h-2 bg-green-500 rounded-full pulse"></span>
+                    Data Terbaru
+                </h2>
+                <div id="latestDataCard" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <p class="text-gray-500">Memuat data...</p>
+                </div>
+            </div>
+
+            <!-- Real-time Table -->
+            <div class="card-glass p-6 rounded-2xl shadow-xl">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-2xl font-bold text-gray-800">Riwayat Data Sensor</h2>
+                    <button onclick="fetchRealtimeData()" class="px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg font-semibold hover:shadow-lg transition-all">
+                        Refresh
+                    </button>
+                </div>
+                
+                <div class="overflow-x-auto rounded-xl border border-gray-200">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gradient-to-r from-gray-50 to-gray-100">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Waktu</th>
+                                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">pH</th>
+                                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">TDS</th>
+                                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">SG</th>
+                                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Kekeruhan</th>
+                                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">NTU</th>
+                                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Warna</th>
+                                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">ML Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="realtimeBody" class="bg-white divide-y divide-gray-200">
+                            <tr><td colspan="8" class="text-center py-8 text-gray-500">Memuat data...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ML History Tab -->
+        <div id="content-history" class="space-y-6 hidden">
+            <div class="card-glass p-6 rounded-2xl shadow-xl">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-2xl font-bold text-gray-800">
+                         Machine Learning Predictions</h2>
+                    <button onclick="fetchMLHistory()" class="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-lg font-semibold hover:shadow-lg transition-all">
+                         Refresh
+                    </button>
+                </div>
+                
+                <div id="historyContainer" class="space-y-4">
+                    <p class="text-gray-500">Memuat history...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentTab = 'realtime';
+        let lastTimestamp = 0;
+
+        function switchTab(tab) {
+            currentTab = tab;
+            
+            // Update buttons
+            document.getElementById('tab-realtime').classList.remove('active');
+            document.getElementById('tab-history').classList.remove('active');
+            document.getElementById(`tab-${tab}`).classList.add('active');
+            
+            // Update content
+            document.getElementById('content-realtime').classList.add('hidden');
+            document.getElementById('content-history').classList.add('hidden');
+            document.getElementById(`content-${tab}`).classList.remove('hidden');
+            
+            // Load data
+            if (tab === 'realtime') {
+                fetchRealtimeData();
+            } else {
+                fetchMLHistory();
+            }
+        }
+
+        function getTurbidityBadge(level) {
+            if (!level || level === 'N/A') return 'badge-info';
+            const levelUpper = level.toUpperCase();
+            if (levelUpper.includes('JERNIH')) return 'badge-jernih';
+            if (levelUpper.includes('AGAK')) return 'badge-agak-keruh';
+            if (levelUpper.includes('KERUH')) return 'badge-keruh';
+            return 'badge-info';
+        }
+
+        function getRiskBadge(risk) {
+            if (!risk) return 'risk-rendah';
+            const riskUpper = risk.toUpperCase();
+            if (riskUpper === 'NORMAL') return 'risk-normal';
+            if (riskUpper === 'RENDAH') return 'risk-rendah';
+            if (riskUpper === 'SEDANG') return 'risk-sedang';
+            if (riskUpper === 'TINGGI') return 'risk-tinggi';
+            return 'risk-rendah';
+        }
+
+        async function fetchStats() {
+            try {
+                const res = await fetch('http://localhost:3000/api/stats');
+                const data = await res.json();
+                
+                if (data.success) {
+                    document.getElementById('totalData').textContent = data.totalData || 0;
+                    document.getElementById('mlProcessed').textContent = data.totalWithML || 0;
+                    document.getElementById('mlCoverage').textContent = data.mlCoverage || '0%';
+                    
+                    const avgConf = data.averages?.avgConfidence;
+                    document.getElementById('avgConfidence').textContent = avgConf ? (avgConf * 100).toFixed(1) + '%' : '-';
+                    
+                    const avgNtu = data.averages?.avgNTU;
+                    document.getElementById('avgNTU').textContent = avgNtu ? avgNtu.toFixed(1) : '-';
+                }
+            } catch (err) {
+                console.error('Stats error:', err);
+            }
+        }
+
+        async function fetchRealtimeData() {
+            try {
+                const res = await fetch('http://localhost:3000/api/data/all?limit=50');
+                const response = await res.json();
+                const data = response.data || [];
+
+                // Update latest card
+                if (data.length > 0) {
+                    const latest = data[0];
+                    const rgb = `rgb(${latest.red || 0}, ${latest.green || 0}, ${latest.blue || 0})`;
+                    
+                    const mlStatus = latest.mlPrediction?.disease 
+                        ? `<div class="mt-2 p-3 bg-purple-50 rounded-lg">
+                            <p class="text-sm font-semibold text-purple-800"> ML: ${latest.mlPrediction.disease}</p>
+                            <p class="text-xs text-purple-600">Confidence: ${(latest.mlPrediction.confidence * 100).toFixed(1)}%</p>
+                          </div>`
+                        : '<p class="text-sm text-gray-500 mt-2"> ML processing...</p>';
+                    
+                    document.getElementById('latestDataCard').innerHTML = `
+                        <div class="space-y-2">
+                            <p class="text-sm text-gray-500 font-medium">Parameter Kimia</p>
+                            <div class="space-y-1">
+                                <p class="text-lg font-semibold">pH: <span class="text-purple-600">${latest.ph?.toFixed(2) || '-'}</span></p>
+                                <p class="text-lg font-semibold">TDS: <span class="text-green-600">${latest.tds?.toFixed(1) || '-'} ppm</span></p>
+                                <p class="text-lg font-semibold">SG: <span class="text-blue-600">${latest.specificGravity?.toFixed(3) || '-'}</span></p>
+                            </div>
+                        </div>
+                        
+                        <div class="space-y-2">
+                            <p class="text-sm text-gray-500 font-medium">Kekeruhan</p>
+                            <div class="space-y-1">
+                                <p class="text-lg font-semibold">
+                                    <span class="badge ${getTurbidityBadge(latest.turbidityLevel)}">${latest.turbidityLevel || 'N/A'}</span>
+                                </p>
+                                <p class="text-lg font-semibold">NTU: <span class="text-yellow-600">${latest.turbidityNTU?.toFixed(1) || '-'}</span></p>
+                                <div class="flex items-center gap-2 mt-2">
+                                    <div class="w-12 h-12 rounded border-2 border-gray-300" style="background-color: ${rgb}"></div>
+                                    <div>
+                                        <p class="font-semibold text-sm">${latest.warnaDasar || '-'}</p>
+                                        <p class="text-xs text-gray-500">RGB: ${latest.red},${latest.green},${latest.blue}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="space-y-2">
+                            <p class="text-sm text-gray-500 font-medium">ML Prediction</p>
+                            ${mlStatus}
+                        </div>
+                    `;
+                }
+
+                // Update table
+                const tbody = document.getElementById('realtimeBody');
+                if (data.length === 0) {
+                    tbody.innerHTML = "<tr><td colspan='8' class='text-center py-8 text-gray-500'>Tidak ada data</td></tr>";
+                    return;
+                }
+
+                tbody.innerHTML = data.map((item, i) => {
+                    const waktu = new Date(item.timestamp).toLocaleString('id-ID', {
+                        day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'
+                    });
+                    
+                    const mlStatusBadge = item.mlPrediction?.disease
+                        ? `<span class="badge bg-purple-100 text-purple-800">✓ ${item.mlPrediction.disease}</span>`
+                        : '<span class="badge bg-gray-100 text-gray-600"> Processing</span>';
+                    
+                    return `
+                        <tr class="${i % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-gray-100">
+                            <td class="px-6 py-4 text-sm">${waktu}</td>
+                            <td class="px-6 py-4 text-sm font-semibold">${item.ph?.toFixed(2) || '-'}</td>
+                            <td class="px-6 py-4 text-sm">${item.tds?.toFixed(1) || '-'}</td>
+                            <td class="px-6 py-4 text-sm">${item.specificGravity?.toFixed(3) || '-'}</td>
+                            <td class="px-6 py-4">
+                                <span class="badge ${getTurbidityBadge(item.turbidityLevel)}">${item.turbidityLevel || '-'}</span>
+                            </td>
+                            <td class="px-6 py-4 text-sm">${item.turbidityNTU?.toFixed(1) || '-'}</td>
+                            <td class="px-6 py-4 text-sm">${item.warnaDasar || '-'}</td>
+                            <td class="px-6 py-4">${mlStatusBadge}</td>
+                        </tr>
+                    `;
+                }).join('');
+
+            } catch (err) {
+                console.error('Error:', err);
+            }
+        }
+
+        async function fetchMLHistory() {
+            try {
+                const res = await fetch('http://localhost:3000/api/data/history?limit=20');
+                const response = await res.json();
+                const data = response.data || [];
+
+                const container = document.getElementById('historyContainer');
+                
+                if (data.length === 0) {
+                    container.innerHTML = '<p class="text-gray-500">Belum ada data dengan prediksi ML</p>';
+                    return;
+                }
+
+                container.innerHTML = data.map(item => {
+                    const ml = item.mlPrediction;
+                    const waktu = new Date(item.timestamp).toLocaleString('id-ID', {
+                        day: '2-digit', month: 'long', year: 'numeric',
+                        hour: '2-digit', minute: '2-digit'
+                    });
+                    
+                    return `
+                        <div class="border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-all">
+                            <div class="flex items-start justify-between mb-4">
+                                <div>
+                                    <h3 class="text-xl font-bold text-gray-800"> ${ml.disease}</h3>
+                                    <p class="text-sm text-gray-500">${waktu}</p>
+                                </div>
+                                <span class="badge ${getRiskBadge(ml.riskLevel)} text-lg px-4 py-2">
+                                    ${ml.riskLevel || 'Normal'}
+                                </span>
+                            </div>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                <div class="bg-gray-50 p-4 rounded-lg">
+                                    <p class="text-sm text-gray-600 mb-2">Sensor Data</p>
+                                    <div class="space-y-1">
+                                        <p class="text-sm"><span class="font-semibold">pH:</span> ${item.ph?.toFixed(2)}</p>
+                                        <p class="text-sm"><span class="font-semibold">TDS:</span> ${item.tds?.toFixed(1)} ppm</p>
+                                        <p class="text-sm"><span class="font-semibold">SG:</span> ${item.specificGravity?.toFixed(3)}</p>
+                                        <p class="text-sm">
+                                            <span class="font-semibold">Kekeruhan:</span> 
+                                            <span class="badge ${getTurbidityBadge(item.turbidityLevel)}">${item.turbidityLevel}</span>
+                                            ${item.turbidityNTU?.toFixed(1)} NTU
+                                        </p>
+                                    </div>
+                                </div>
+                                
+                                <div class="bg-purple-50 p-4 rounded-lg">
+                                    <p class="text-sm text-purple-600 mb-2 font-semibold">ML Models</p>
+                                    <div class="space-y-1">
+                                        <p class="text-sm">
+                                            <span class="font-semibold">Random Forest:</span> ${ml.rfPrediction} 
+                                            <span class="text-purple-600">(${(ml.rfConfidence * 100).toFixed(1)}%)</span>
+                                        </p>
+                                        <p class="text-sm">
+                                            <span class="font-semibold">XGBoost:</span> ${ml.xgbPrediction}
+                                            <span class="text-purple-600">(${(ml.xgbConfidence * 100).toFixed(1)}%)</span>
+                                        </p>
+                                        <p class="text-sm">
+                                            <span class="font-semibold">Ensemble:</span>
+                                            <span class="text-purple-800 font-bold">${(ml.confidence * 100).toFixed(1)}%</span>
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-blue-50 p-4 rounded-lg">
+                                <p class="text-sm font-semibold text-blue-800 mb-1"> Rekomendasi:</p>
+                                <p class="text-sm text-blue-700">${ml.recommendation || '-'}</p>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+            } catch (err) {
+                console.error('Error:', err);
+                document.getElementById('historyContainer').innerHTML = 
+                    '<p class="text-red-500">Gagal memuat history ML</p>';
+            }
+        }
+
+        // Auto refresh
+        setInterval(() => {
+            if (currentTab === 'realtime') {
+                fetchRealtimeData();
+            }
+            fetchStats();
+        }, 3000);
+
+        // Initial load
+        fetchStats();
+        fetchRealtimeData();
+    </script>
+</body>
+</html>
